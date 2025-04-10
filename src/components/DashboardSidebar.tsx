@@ -20,9 +20,14 @@ import {
   Calendar,
   Bell,
   HelpCircle,
-  LogOut
+  LogOut,
+  Utensils,
+  UserCog,
+  FileText,
+  BarChart3,
+  Users
 } from 'lucide-react';
-import { useAuth } from '@/store/authContext';
+import { useAuth, UserRole } from '@/store/authContext';
 
 interface SidebarLinkProps {
   to: string;
@@ -34,7 +39,7 @@ interface SidebarLinkProps {
 const SidebarLink = ({ to, icon, children, isActive }: SidebarLinkProps) => {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild active={isActive}>
+      <SidebarMenuButton asChild isActive={isActive}>
         <Link to={to} className="flex items-center">
           {React.cloneElement(icon, {
             className: 'mr-2 h-5 w-5'
@@ -48,8 +53,11 @@ const SidebarLink = ({ to, icon, children, isActive }: SidebarLinkProps) => {
 
 const DashboardSidebar = () => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const path = location.pathname;
+  
+  // Determine if user is a restaurant owner
+  const isRestaurantOwner = user?.role === 'restaurant_owner';
   
   return (
     <Sidebar>
@@ -65,18 +73,41 @@ const DashboardSidebar = () => {
           <SidebarGroupLabel>General</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarLink to="/dashboard" icon={<Home />} isActive={path === '/dashboard'}>
+              <SidebarLink 
+                to={isRestaurantOwner ? "/owner-dashboard" : "/dashboard"} 
+                icon={<Home />} 
+                isActive={path === (isRestaurantOwner ? '/owner-dashboard' : '/dashboard')}
+              >
                 Dashboard
               </SidebarLink>
-              <SidebarLink to="/dashboard/search" icon={<Search />} isActive={path === '/dashboard/search'}>
-                Find Restaurants
-              </SidebarLink>
-              <SidebarLink to="/dashboard/bookmarks" icon={<BookmarkCheck />} isActive={path === '/dashboard/bookmarks'}>
-                Bookmarked
-              </SidebarLink>
-              <SidebarLink to="/dashboard/reservations" icon={<Calendar />} isActive={path === '/dashboard/reservations'}>
-                Reservations
-              </SidebarLink>
+              
+              {!isRestaurantOwner ? (
+                // Diner specific links
+                <>
+                  <SidebarLink to="/dashboard/search" icon={<Search />} isActive={path === '/dashboard/search'}>
+                    Find Restaurants
+                  </SidebarLink>
+                  <SidebarLink to="/dashboard/bookmarks" icon={<BookmarkCheck />} isActive={path === '/dashboard/bookmarks'}>
+                    Bookmarked
+                  </SidebarLink>
+                  <SidebarLink to="/dashboard/reservations" icon={<Calendar />} isActive={path === '/dashboard/reservations'}>
+                    My Reservations
+                  </SidebarLink>
+                </>
+              ) : (
+                // Restaurant owner specific links
+                <>
+                  <SidebarLink to="/owner-dashboard/restaurants" icon={<Utensils />} isActive={path === '/owner-dashboard/restaurants'}>
+                    My Restaurants
+                  </SidebarLink>
+                  <SidebarLink to="/owner-dashboard/reservations" icon={<Calendar />} isActive={path === '/owner-dashboard/reservations'}>
+                    Reservations
+                  </SidebarLink>
+                  <SidebarLink to="/owner-dashboard/analytics" icon={<BarChart3 />} isActive={path === '/owner-dashboard/analytics'}>
+                    Analytics
+                  </SidebarLink>
+                </>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -88,9 +119,21 @@ const DashboardSidebar = () => {
               <SidebarLink to="/dashboard/notifications" icon={<Bell />} isActive={path === '/dashboard/notifications'}>
                 Notifications
               </SidebarLink>
-              <SidebarLink to="/dashboard/settings" icon={<Settings />} isActive={path === '/dashboard/settings'}>
+              
+              {isRestaurantOwner && (
+                <SidebarLink to="/owner-dashboard/staff" icon={<Users />} isActive={path === '/owner-dashboard/staff'}>
+                  Staff Management
+                </SidebarLink>
+              )}
+              
+              <SidebarLink 
+                to={isRestaurantOwner ? "/owner-dashboard/settings" : "/dashboard/settings"} 
+                icon={<Settings />} 
+                isActive={path === (isRestaurantOwner ? '/owner-dashboard/settings' : '/dashboard/settings')}
+              >
                 Settings
               </SidebarLink>
+              
               <SidebarLink to="/dashboard/help" icon={<HelpCircle />} isActive={path === '/dashboard/help'}>
                 Help & Support
               </SidebarLink>

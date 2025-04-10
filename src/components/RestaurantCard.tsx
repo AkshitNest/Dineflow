@@ -54,7 +54,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant }) => {
             <span>Current occupancy</span>
             <span className="font-medium">{restaurant.occupiedSeats} / {restaurant.totalSeats} seats</span>
           </div>
-          <Progress value={occupancyPercentage} className="h-2" indicatorClassName={getProgressColor()} />
+          <Progress value={occupancyPercentage} className={`h-2 ${getProgressColor()}`} />
         </div>
       </CardContent>
       

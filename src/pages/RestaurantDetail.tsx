@@ -1,31 +1,77 @@
 
-import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import DashboardSidebar from '@/components/DashboardSidebar';
-import DashboardHeader from '@/components/DashboardHeader';
-import OccupancyChart from '@/components/OccupancyChart';
-import { getRestaurantById, getOccupancyData } from '@/store/restaurantData';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, MapPin, Phone, Clock, Star, DollarSign, Globe, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/store/authContext';
+import OccupancyChart from '@/components/OccupancyChart';
+import { getRestaurantById } from '@/store/restaurantData';
+import BookingForm from '@/components/BookingForm';
+import { AlertTriangle, BookOpen, Clock, MapPin, Phone, Star as StarIcon, Users, Utensils } from 'lucide-react';
 
-const RestaurantDetail: React.FC = () => {
+const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [restaurant, setRestaurant] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
   
-  // Get restaurant data
-  const restaurant = id ? getRestaurantById(id) : undefined;
+  // Check if user is a restaurant owner
+  const isOwner = user?.role === 'restaurant_owner';
   
-  // Get occupancy data for chart
-  const occupancyData = id ? getOccupancyData(id) : [];
+  useEffect(() => {
+    // Fetch restaurant data when component mounts
+    const fetchRestaurant = async () => {
+      try {
+        if (!id) return;
+        
+        const data = await getRestaurantById(id);
+        setRestaurant(data);
+      } catch (error) {
+        console.error("Error fetching restaurant:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRestaurant();
+  }, [id]);
   
-  // Calculate occupancy percentage
-  const occupancyPercentage = restaurant 
-    ? Math.round((restaurant.occupiedSeats / restaurant.totalSeats) * 100)
-    : 0;
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-dineflow-purple"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  if (!restaurant) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-full p-8">
+          <AlertTriangle className="h-16 w-16 text-yellow-500 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Restaurant Not Found</h2>
+          <p className="text-muted-foreground mb-6">The restaurant you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/dashboard/search')}>Back to Search</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  const occupancyPercentage = Math.round((restaurant.occupiedSeats / restaurant.totalSeats) * 100);
+  
+  // Determine the color class for occupancy indicator
+  const getOccupancyColor = () => {
+    if (occupancyPercentage >= 80) return 'text-red-500';
+    if (occupancyPercentage >= 50) return 'text-amber-500';
+    return 'text-green-500';
+  };
   
   // Determine the color of the progress bar based on occupancy
   const getProgressColor = () => {
@@ -34,216 +80,256 @@ const RestaurantDetail: React.FC = () => {
     return 'bg-green-500';
   };
   
-  // If restaurant not found
-  if (!restaurant) {
-    return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full">
-          <DashboardSidebar />
-          
-          <main className="flex-1 flex flex-col">
-            <DashboardHeader />
-            
-            <div className="flex-1 overflow-auto p-6">
-              <div className="max-w-4xl mx-auto">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => navigate(-1)}
-                  className="mb-6"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                
-                <Alert>
-                  <AlertDescription>
-                    Restaurant not found. The restaurant you're looking for might have been removed or doesn't exist.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="mt-6 text-center">
-                  <Button asChild>
-                    <Link to="/dashboard/search">Browse Restaurants</Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
-      </SidebarProvider>
-    );
-  }
-  
+  // Sample menu data
+  const menuCategories = [
+    {
+      name: "Starters",
+      items: [
+        { name: "Bruschetta", description: "Toasted bread with tomatoes, garlic and basil", price: 8.99 },
+        { name: "Calamari", description: "Crispy fried squid with marinara sauce", price: 12.99 },
+        { name: "Caprese Salad", description: "Fresh mozzarella, tomatoes, and basil", price: 10.99 }
+      ]
+    },
+    {
+      name: "Main Courses",
+      items: [
+        { name: "Spaghetti Carbonara", description: "Classic pasta with pancetta, eggs and cheese", price: 16.99 },
+        { name: "Chicken Parmesan", description: "Breaded chicken with tomato sauce and mozzarella", price: 18.99 },
+        { name: "Grilled Salmon", description: "With lemon butter sauce and seasonal vegetables", price: 22.99 }
+      ]
+    },
+    {
+      name: "Desserts",
+      items: [
+        { name: "Tiramisu", description: "Classic Italian coffee-flavored dessert", price: 7.99 },
+        { name: "Cannoli", description: "Crispy pastry tubes with sweet ricotta filling", price: 6.99 },
+        { name: "Panna Cotta", description: "Italian cream dessert with berry compote", price: 8.99 }
+      ]
+    }
+  ];
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <DashboardSidebar />
-        
-        <main className="flex-1 flex flex-col">
-          <DashboardHeader />
-          
-          <div className="flex-1 overflow-auto">
-            {/* Restaurant header image */}
-            <div className="h-64 md:h-80 w-full relative">
+    <DashboardLayout>
+      <div className="p-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main content */}
+          <div className="flex-1">
+            {/* Hero section */}
+            <div className="relative rounded-xl overflow-hidden h-64 mb-6">
               <img 
                 src={restaurant.image} 
                 alt={restaurant.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              <Button 
-                variant="outline" 
-                onClick={() => navigate(-1)}
-                className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm hover:bg-white"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-              <div className="absolute bottom-4 right-4 flex items-center bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1" />
-                <span className="font-medium">{restaurant.rating}</span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
+                <div className="p-6 text-white">
+                  <h1 className="text-3xl font-bold mb-2">{restaurant.name}</h1>
+                  <div className="flex items-center gap-4 mb-2">
+                    <Badge variant="outline" className="bg-white/20 text-white border-none">
+                      {restaurant.cuisine}
+                    </Badge>
+                    <div className="flex items-center">
+                      <StarIcon className="w-4 h-4 text-yellow-400 fill-current mr-1" />
+                      <span>{restaurant.rating}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-sm">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span>{restaurant.location}</span>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-16 relative z-10">
-              <Card className="overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Restaurant details */}
-                    <div className="md:col-span-2 space-y-6">
-                      <div>
-                        <h1 className="text-3xl font-bold mb-2">{restaurant.name}</h1>
-                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-4">
-                          <span className="flex items-center">
-                            <BookOpen className="h-4 w-4 mr-1" />
-                            {restaurant.cuisine}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            {restaurant.priceRange}
-                          </span>
-                        </div>
-                        
-                        <p className="text-gray-600">
-                          {restaurant.description}
-                        </p>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                        <div>
-                          <h3 className="font-medium mb-2">Contact & Location</h3>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-start">
-                              <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
-                              <span>{restaurant.address}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                              <span>{restaurant.phoneNumber}</span>
-                            </div>
-                            {restaurant.website && (
-                              <div className="flex items-center">
-                                <Globe className="h-4 w-4 mr-2 text-gray-500" />
-                                <a 
-                                  href={restaurant.website} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-dineflow-purple hover:underline"
-                                >
-                                  Website
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="font-medium mb-2">Hours</h3>
-                          <div className="flex items-start text-sm">
-                            <Clock className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
-                            <span>{restaurant.hours}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-medium mb-2">Current Occupancy</h3>
-                        <div className="bg-gray-100 p-4 rounded-lg">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>Seats occupied</span>
-                            <span className="font-medium">{restaurant.occupiedSeats} / {restaurant.totalSeats} seats ({occupancyPercentage}%)</span>
-                          </div>
-                          <Progress value={occupancyPercentage} className="h-2" indicatorClassName={getProgressColor()} />
-                          
-                          <div className="mt-4 text-sm">
-                            <div className="flex justify-between">
-                              <span>Estimated wait time</span>
-                              <span className="font-medium">{restaurant.estimatedWaitTime} minutes</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-medium mb-2">Occupancy Trend</h3>
-                        <div className="bg-gray-100 p-4 rounded-lg">
-                          <OccupancyChart data={occupancyData} />
-                        </div>
-                      </div>
+            {/* Restaurant details */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Users className="h-5 w-5 text-gray-500 mr-2" />
+                      <span>Current Occupancy</span>
                     </div>
-                    
-                    {/* Sidebar */}
-                    <div>
-                      <div className="sticky top-6 space-y-6">
-                        <Card>
-                          <CardContent className="p-6">
-                            <h3 className="text-lg font-semibold mb-4">Make a Reservation</h3>
-                            <p className="text-sm text-gray-600 mb-4">
-                              Secure your table now and skip the wait!
-                            </p>
-                            <Button className="w-full mb-3">Book Now</Button>
-                            <p className="text-xs text-center text-gray-500">
-                              No payment required to reserve
-                            </p>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardContent className="p-6 space-y-4">
-                            <h3 className="text-lg font-semibold">Best Times to Visit</h3>
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span>Monday</span>
-                                <span className="font-medium text-green-600">Low traffic</span>
-                              </div>
-                              <Progress value={30} className="h-1.5 mt-1" />
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span>Tuesday - Thursday</span>
-                                <span className="font-medium text-amber-600">Moderate</span>
-                              </div>
-                              <Progress value={60} className="h-1.5 mt-1" indicatorClassName="bg-amber-500" />
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span>Friday - Sunday</span>
-                                <span className="font-medium text-red-600">High traffic</span>
-                              </div>
-                              <Progress value={90} className="h-1.5 mt-1" indicatorClassName="bg-red-500" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
+                    <span className={`font-semibold ${getOccupancyColor()}`}>
+                      {occupancyPercentage}%
+                    </span>
+                  </div>
+                  <Progress value={occupancyPercentage} className={`h-2 mt-2 ${getProgressColor()}`} />
+                  <div className="text-sm text-gray-500 mt-2">
+                    {restaurant.occupiedSeats} / {restaurant.totalSeats} seats
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center">
+                    <Clock className="h-5 w-5 text-gray-500 mr-2" />
+                    <span>Wait Time</span>
+                  </div>
+                  <div className="text-2xl font-bold mt-2">
+                    {restaurant.estimatedWaitTime} min
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Estimated waiting time
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center">
+                    <Phone className="h-5 w-5 text-gray-500 mr-2" />
+                    <span>Contact</span>
+                  </div>
+                  <div className="text-lg font-medium mt-2">
+                    (555) 123-4567
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Call for inquiries
                   </div>
                 </CardContent>
               </Card>
             </div>
+            
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="menu">Menu</TabsTrigger>
+                <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                {isOwner && <TabsTrigger value="manage">Manage</TabsTrigger>}
+              </TabsList>
+              
+              <TabsContent value="overview">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2">About {restaurant.name}</h3>
+                      <p className="text-gray-600">
+                        {restaurant.name} is a charming {restaurant.cuisine} restaurant located in the heart of {restaurant.location}. 
+                        Known for its exceptional service and authentic cuisine, it's a favorite among locals and tourists alike.
+                        The restaurant features a warm and inviting atmosphere, perfect for both casual dining and special occasions.
+                      </p>
+                    </div>
+                    
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2">Occupancy Trends</h3>
+                      <div className="h-72">
+                        <OccupancyChart restaurantId={restaurant.id} />
+                      </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2">Features</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        <div className="flex flex-col items-center p-4 border rounded-lg">
+                          <Utensils className="h-6 w-6 text-dineflow-purple mb-2" />
+                          <span className="text-sm">Outdoor Seating</span>
+                        </div>
+                        <div className="flex flex-col items-center p-4 border rounded-lg">
+                          <Users className="h-6 w-6 text-dineflow-purple mb-2" />
+                          <span className="text-sm">Private Events</span>
+                        </div>
+                        <div className="flex flex-col items-center p-4 border rounded-lg">
+                          <BookOpen className="h-6 w-6 text-dineflow-purple mb-2" />
+                          <span className="text-sm">Reservation</span>
+                        </div>
+                        <div className="flex flex-col items-center p-4 border rounded-lg">
+                          <Clock className="h-6 w-6 text-dineflow-purple mb-2" />
+                          <span className="text-sm">Live Wait Times</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Operating Hours</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Monday - Thursday</span>
+                          <span>11:00 AM - 10:00 PM</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Friday - Saturday</span>
+                          <span>11:00 AM - 11:00 PM</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Sunday</span>
+                          <span>12:00 PM - 9:00 PM</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="menu">
+                <Card>
+                  <CardContent className="pt-6">
+                    {menuCategories.map((category, idx) => (
+                      <div key={idx} className={idx > 0 ? 'mt-8' : ''}>
+                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">{category.name}</h3>
+                        <div className="space-y-6">
+                          {category.items.map((item, itemIdx) => (
+                            <div key={itemIdx} className="flex justify-between">
+                              <div>
+                                <h4 className="font-medium">{item.name}</h4>
+                                <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                              </div>
+                              <div className="font-semibold">${item.price.toFixed(2)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="reviews">
+                <Card>
+                  <CardContent className="pt-6 text-center py-10">
+                    <p className="text-muted-foreground">
+                      Reviews will be available soon...
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              {isOwner && (
+                <TabsContent value="manage">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Restaurant Management</h3>
+                        <p className="text-gray-600">
+                          As the owner, you have access to additional management tools.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline">Edit Details</Button>
+                          <Button variant="outline">Update Menu</Button>
+                          <Button variant="outline">View Reservations</Button>
+                          <Button variant="outline">Occupancy Settings</Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+            </Tabs>
           </div>
-        </main>
+          
+          {/* Booking sidebar */}
+          <div className="w-full lg:w-80 shrink-0">
+            <div className="sticky top-6">
+              <BookingForm 
+                restaurantId={restaurant.id} 
+                restaurantName={restaurant.name} 
+              />
+            </div>
+          </div>
+        </div>
       </div>
-    </SidebarProvider>
+    </DashboardLayout>
   );
 };
 

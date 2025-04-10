@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/authContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +14,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      toast.error('You must be logged in to access this page.');
+      toast({
+        title: 'Authentication required',
+        description: 'You must be logged in to access this page.',
+        variant: 'destructive'
+      });
     }
   }, [isAuthenticated, isLoading]);
 

@@ -1,5 +1,5 @@
 
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/hooks/use-toast";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import RestaurantSearch from "./pages/RestaurantSearch";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import BookmarkPage from "./pages/BookmarkPage";
+import OwnerDashboard from "./pages/OwnerDashboard";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import Contact from "./pages/Contact";
@@ -40,7 +41,7 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/contact" element={<Contact />} />
               
-              {/* Protected routes */}
+              {/* Protected routes - Diner */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <Dashboard />
@@ -59,6 +60,13 @@ const App = () => (
               <Route path="/restaurants/:id" element={
                 <ProtectedRoute>
                   <RestaurantDetail />
+                </ProtectedRoute>
+              } />
+              
+              {/* Protected routes - Restaurant Owner */}
+              <Route path="/owner-dashboard" element={
+                <ProtectedRoute>
+                  <OwnerDashboard />
                 </ProtectedRoute>
               } />
               
