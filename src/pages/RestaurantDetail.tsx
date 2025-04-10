@@ -108,6 +108,18 @@ const RestaurantDetail = () => {
     }
   ];
 
+  // Mock data for the occupancy chart
+  const mockChartData = [
+    { time: '8 AM', occupancy: 10 },
+    { time: '10 AM', occupancy: 25 },
+    { time: '12 PM', occupancy: 80 },
+    { time: '2 PM', occupancy: 45 },
+    { time: '4 PM', occupancy: 30 },
+    { time: '6 PM', occupancy: 70 },
+    { time: '8 PM', occupancy: 90 },
+    { time: '10 PM', occupancy: 50 },
+  ];
+
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -215,7 +227,7 @@ const RestaurantDetail = () => {
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Occupancy Trends</h3>
                       <div className="h-72">
-                        <OccupancyChart />
+                        <OccupancyChart data={mockChartData} />
                       </div>
                     </div>
                     
