@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 // Define types for our authentication context
 interface User {
@@ -72,11 +72,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Save user to local storage and state
       localStorage.setItem('dineflow_user', JSON.stringify(userData));
       setUser(userData);
-      toast.success(`Welcome back, ${userData.name}!`);
+      toast({
+        title: "Welcome back!",
+        description: `Welcome back, ${userData.name}!`,
+      });
       return true;
     }
     
-    toast.error('Invalid email or password');
+    toast({
+      title: "Login failed",
+      description: "Invalid email or password",
+      variant: "destructive",
+    });
     return false;
   };
 
@@ -96,7 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Save user data
     localStorage.setItem('dineflow_user', JSON.stringify(googleUser));
     setUser(googleUser);
-    toast.success(`Welcome, ${googleUser.name}!`);
+    toast({
+      title: "Welcome!",
+      description: `Welcome, ${googleUser.name}!`,
+    });
     return true;
   };
 
@@ -107,7 +117,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Check if user already exists
     if (USERS_DB.some(u => u.email === email)) {
-      toast.error('Email already in use');
+      toast({
+        title: "Signup failed",
+        description: "Email already in use",
+        variant: "destructive",
+      });
       return false;
     }
     
@@ -121,7 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Save user data
     localStorage.setItem('dineflow_user', JSON.stringify(newUser));
     setUser(newUser);
-    toast.success('Account created successfully!');
+    toast({
+      title: "Success!",
+      description: "Account created successfully!",
+    });
     return true;
   };
 
@@ -129,7 +146,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('dineflow_user');
     setUser(null);
-    toast.info('You have been logged out');
+    toast({
+      title: "Logged out",
+      description: "You have been logged out",
+    });
   };
 
   return (
