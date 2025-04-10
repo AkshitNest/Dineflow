@@ -1,158 +1,144 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter
-} from '@/components/ui/sidebar';
-import {
+import { NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '@/store/authContext';
+import { 
   Home,
   Search,
-  BookmarkCheck,
+  Bookmark,
+  CalendarCheck2,
+  User,
   Settings,
-  Calendar,
-  Bell,
-  HelpCircle,
   LogOut,
-  Utensils,
-  UserCog,
-  FileText,
-  BarChart3,
-  Users
+  ChevronRight
 } from 'lucide-react';
-import { useAuth, UserRole } from '@/store/authContext';
-
-interface SidebarLinkProps {
-  to: string;
-  icon: React.ReactElement;
-  children: React.ReactNode;
-  isActive: boolean;
-}
-
-const SidebarLink = ({ to, icon, children, isActive }: SidebarLinkProps) => {
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive}>
-        <Link to={to} className="flex items-center">
-          {React.cloneElement(icon, {
-            className: 'mr-2 h-5 w-5'
-          })}
-          <span>{children}</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-};
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarHeader, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton,
+  SidebarTrigger
+} from "@/components/ui/sidebar";
 
 const DashboardSidebar = () => {
   const location = useLocation();
-  const { logout, user } = useAuth();
-  const path = location.pathname;
+  const { user, logout } = useAuth();
   
-  // Determine if user is a restaurant owner
-  const isRestaurantOwner = user?.role === 'restaurant_owner';
+  const isOwner = user?.role === 'restaurant_owner';
+  
+  const dinerLinks = [
+    {
+      to: '/dashboard',
+      icon: <Home className="h-4 w-4 mr-2" />,
+      label: 'Dashboard',
+      exact: true
+    },
+    {
+      to: '/dashboard/search',
+      icon: <Search className="h-4 w-4 mr-2" />,
+      label: 'Find Restaurants',
+      exact: false
+    },
+    {
+      to: '/dashboard/bookmarks',
+      icon: <Bookmark className="h-4 w-4 mr-2" />,
+      label: 'Bookmarks',
+      exact: false
+    },
+    {
+      to: '/dashboard/reservations',
+      icon: <CalendarCheck2 className="h-4 w-4 mr-2" />,
+      label: 'My Reservations',
+      exact: false
+    }
+  ];
+  
+  const ownerLinks = [
+    {
+      to: '/owner-dashboard',
+      icon: <Home className="h-4 w-4 mr-2" />,
+      label: 'Dashboard',
+      exact: true
+    }
+  ];
+  
+  const navLinks = isOwner ? ownerLinks : dinerLinks;
+  
+  const isActive = (path: string, exact: boolean) => {
+    if (exact) return location.pathname === path;
+    return location.pathname.startsWith(path);
+  };
   
   return (
-    <Sidebar>
-      <SidebarContent>
-        <div className="px-3 py-4">
-          <Link to="/" className="flex items-center mb-4">
-            <span className="text-dineflow-purple font-bold text-xl mr-1">Dine</span>
-            <span className="font-bold text-xl">flow</span>
-          </Link>
+    <Sidebar className="border-r border-gray-200">
+      <SidebarHeader className="h-14 flex items-center px-4 border-b">
+        <div className="flex items-center">
+          <span className="font-semibold text-lg">DineFlow</span>
         </div>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>General</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarLink 
-                to={isRestaurantOwner ? "/owner-dashboard" : "/dashboard"} 
-                icon={<Home />} 
-                isActive={path === (isRestaurantOwner ? '/owner-dashboard' : '/dashboard')}
-              >
-                Dashboard
-              </SidebarLink>
-              
-              {!isRestaurantOwner ? (
-                // Diner specific links
-                <>
-                  <SidebarLink to="/dashboard/search" icon={<Search />} isActive={path === '/dashboard/search'}>
-                    Find Restaurants
-                  </SidebarLink>
-                  <SidebarLink to="/dashboard/bookmarks" icon={<BookmarkCheck />} isActive={path === '/dashboard/bookmarks'}>
-                    Bookmarked
-                  </SidebarLink>
-                  <SidebarLink to="/dashboard/reservations" icon={<Calendar />} isActive={path === '/dashboard/reservations'}>
-                    My Reservations
-                  </SidebarLink>
-                </>
-              ) : (
-                // Restaurant owner specific links
-                <>
-                  <SidebarLink to="/owner-dashboard/restaurants" icon={<Utensils />} isActive={path === '/owner-dashboard/restaurants'}>
-                    My Restaurants
-                  </SidebarLink>
-                  <SidebarLink to="/owner-dashboard/reservations" icon={<Calendar />} isActive={path === '/owner-dashboard/reservations'}>
-                    Reservations
-                  </SidebarLink>
-                  <SidebarLink to="/owner-dashboard/analytics" icon={<BarChart3 />} isActive={path === '/owner-dashboard/analytics'}>
-                    Analytics
-                  </SidebarLink>
-                </>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarLink to="/dashboard/notifications" icon={<Bell />} isActive={path === '/dashboard/notifications'}>
-                Notifications
-              </SidebarLink>
-              
-              {isRestaurantOwner && (
-                <SidebarLink to="/owner-dashboard/staff" icon={<Users />} isActive={path === '/owner-dashboard/staff'}>
-                  Staff Management
-                </SidebarLink>
-              )}
-              
-              <SidebarLink 
-                to={isRestaurantOwner ? "/owner-dashboard/settings" : "/dashboard/settings"} 
-                icon={<Settings />} 
-                isActive={path === (isRestaurantOwner ? '/owner-dashboard/settings' : '/dashboard/settings')}
-              >
-                Settings
-              </SidebarLink>
-              
-              <SidebarLink to="/dashboard/help" icon={<HelpCircle />} isActive={path === '/dashboard/help'}>
-                Help & Support
-              </SidebarLink>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        <SidebarTrigger className="ml-auto md:hidden">
+          <ChevronRight className="h-4 w-4" />
+        </SidebarTrigger>
+      </SidebarHeader>
       
-      <SidebarFooter>
+      <SidebarContent>
         <div className="px-3 py-2">
-          <button 
-            onClick={() => logout()}
-            className="flex items-center w-full px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
-          >
-            <LogOut className="mr-2 h-5 w-5" />
-            <span>Logout</span>
-          </button>
+          <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Main
+          </div>
+          <SidebarMenu>
+            {navLinks.map((link, index) => (
+              <SidebarMenuItem key={index}>
+                <SidebarMenuButton asChild active={isActive(link.to, link.exact)}>
+                  <NavLink 
+                    to={link.to}
+                    className={({ isActive }) => 
+                      isActive ? "text-primary" : "text-muted-foreground"
+                    }
+                  >
+                    {link.icon}
+                    <span>{link.label}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+          
+          <div className="px-3 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Account
+          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <button className="w-full flex items-center text-left text-muted-foreground">
+                  <User className="h-4 w-4 mr-2" />
+                  <span>Profile</span>
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <button className="w-full flex items-center text-left text-muted-foreground">
+                  <Settings className="h-4 w-4 mr-2" />
+                  <span>Settings</span>
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <button 
+                  onClick={logout}
+                  className="w-full flex items-center text-left text-muted-foreground"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Logout</span>
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </div>
-      </SidebarFooter>
+      </SidebarContent>
     </Sidebar>
   );
 };

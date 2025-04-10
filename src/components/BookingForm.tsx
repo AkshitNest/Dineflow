@@ -10,6 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarIcon, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import BookingSummary from './BookingSummary';
+import { useAuth } from '@/store/authContext';
+import { addReservation } from '@/store/reservationData';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface BookingFormProps {
   restaurantId: string;
@@ -22,6 +26,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   const [party, setParty] = useState('2');
   const [tableType, setTableType] = useState('Standard');
   const [step, setStep] = useState(1);
+  const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
   const availableTimeSlots = [
     '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', 
@@ -38,6 +49,29 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
     setStep(1);
   };
   
+  const handleConfirmBooking = () => {
+    if (!user || !date) return;
+    
+    // Create new reservation
+    const newReservation = addReservation({
+      restaurantId,
+      userId: user.id,
+      date: format(date, 'yyyy-MM-dd'),
+      time,
+      partySize: parseInt(party),
+      tableType,
+      status: 'confirmed'
+    });
+    
+    toast({
+      title: "Booking Confirmed!",
+      description: `Your reservation at ${restaurantName} has been confirmed.`
+    });
+    
+    // Navigate to reservations page
+    navigate('/dashboard/reservations');
+  };
+  
   if (step === 2 && date) {
     return (
       <BookingSummary 
@@ -47,6 +81,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         party={parseInt(party)}
         tableType={tableType}
         onCancel={handleBack}
+        onConfirm={handleConfirmBooking}
       />
     );
   }
@@ -125,6 +160,36 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <Input 
+              id="name" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Enter your full name"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="phone">Mobile Number</Label>
+            <Input 
+              id="phone" 
+              value={phoneNumber} 
+              onChange={(e) => setPhoneNumber(e.target.value)} 
+              placeholder="+91 XXXXX XXXXX"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="special-requests">Special Requests (Optional)</Label>
+            <Input 
+              id="special-requests" 
+              value={specialRequests} 
+              onChange={(e) => setSpecialRequests(e.target.value)} 
+              placeholder="Any special requests or dietary requirements"
+            />
           </div>
         </div>
       </CardContent>

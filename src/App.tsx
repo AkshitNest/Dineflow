@@ -15,6 +15,7 @@ import SignupPage from "./pages/SignupPage";
 import Dashboard from "./pages/Dashboard";
 import RestaurantSearch from "./pages/RestaurantSearch";
 import RestaurantDetail from "./pages/RestaurantDetail";
+import ReservationsPage from "./pages/ReservationsPage";
 import BookmarkPage from "./pages/BookmarkPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import Features from "./pages/Features";
@@ -55,6 +56,11 @@ const App = () => (
               <Route path="/dashboard/bookmarks" element={
                 <ProtectedRoute>
                   <BookmarkPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard/reservations" element={
+                <ProtectedRoute>
+                  <ReservationsPage />
                 </ProtectedRoute>
               } />
               <Route path="/restaurants/:id" element={

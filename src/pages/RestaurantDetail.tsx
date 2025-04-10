@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -12,6 +11,7 @@ import OccupancyChart from '@/components/OccupancyChart';
 import { getRestaurantById } from '@/store/restaurantData';
 import BookingForm from '@/components/BookingForm';
 import { AlertTriangle, BookOpen, Clock, MapPin, Phone, Star as StarIcon, Users, Utensils } from 'lucide-react';
+import { getOccupancyData } from '@/store/restaurantData';
 
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,11 +20,9 @@ const RestaurantDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Check if user is a restaurant owner
   const isOwner = user?.role === 'restaurant_owner';
   
   useEffect(() => {
-    // Fetch restaurant data when component mounts
     const fetchRestaurant = async () => {
       try {
         if (!id) return;
@@ -66,21 +64,18 @@ const RestaurantDetail = () => {
   
   const occupancyPercentage = Math.round((restaurant.occupiedSeats / restaurant.totalSeats) * 100);
   
-  // Determine the color class for occupancy indicator
   const getOccupancyColor = () => {
     if (occupancyPercentage >= 80) return 'text-red-500';
     if (occupancyPercentage >= 50) return 'text-amber-500';
     return 'text-green-500';
   };
   
-  // Determine the color of the progress bar based on occupancy
   const getProgressColor = () => {
     if (occupancyPercentage >= 80) return 'bg-red-500';
     if (occupancyPercentage >= 50) return 'bg-amber-500';
     return 'bg-green-500';
   };
   
-  // Sample menu data
   const menuCategories = [
     {
       name: "Starters",
@@ -108,25 +103,13 @@ const RestaurantDetail = () => {
     }
   ];
 
-  // Mock data for the occupancy chart
-  const mockChartData = [
-    { time: '8 AM', occupancy: 10 },
-    { time: '10 AM', occupancy: 25 },
-    { time: '12 PM', occupancy: 80 },
-    { time: '2 PM', occupancy: 45 },
-    { time: '4 PM', occupancy: 30 },
-    { time: '6 PM', occupancy: 70 },
-    { time: '8 PM', occupancy: 90 },
-    { time: '10 PM', occupancy: 50 },
-  ];
+  const chartData = id ? getOccupancyData(id) : [];
 
   return (
     <DashboardLayout>
       <div className="p-6">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main content */}
           <div className="flex-1">
-            {/* Hero section */}
             <div className="relative rounded-xl overflow-hidden h-64 mb-6">
               <img 
                 src={restaurant.image} 
@@ -153,7 +136,6 @@ const RestaurantDetail = () => {
               </div>
             </div>
             
-            {/* Restaurant details */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card>
                 <CardContent className="pt-6">
@@ -227,7 +209,7 @@ const RestaurantDetail = () => {
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Occupancy Trends</h3>
                       <div className="h-72">
-                        <OccupancyChart data={mockChartData} />
+                        <OccupancyChart data={chartData} />
                       </div>
                     </div>
                     
@@ -330,7 +312,6 @@ const RestaurantDetail = () => {
             </Tabs>
           </div>
           
-          {/* Booking sidebar */}
           <div className="w-full lg:w-80 shrink-0">
             <div className="sticky top-6">
               <BookingForm 
