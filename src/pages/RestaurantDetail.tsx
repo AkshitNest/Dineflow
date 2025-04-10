@@ -215,7 +215,7 @@ const RestaurantDetail = () => {
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Occupancy Trends</h3>
                       <div className="h-72">
-                        <OccupancyChart restaurantId={restaurant.id} />
+                        <OccupancyChart />
                       </div>
                     </div>
                     
