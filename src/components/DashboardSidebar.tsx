@@ -90,7 +90,7 @@ const DashboardSidebar = () => {
           <SidebarMenu>
             {navLinks.map((link, index) => (
               <SidebarMenuItem key={index}>
-                <SidebarMenuButton asChild active={isActive(link.to, link.exact)}>
+                <SidebarMenuButton asChild isActive={isActive(link.to, link.exact)}>
                   <NavLink 
                     to={link.to}
                     className={({ isActive }) => 
