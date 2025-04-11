@@ -11,6 +11,7 @@ interface BookingSummaryProps {
   time: string;
   party: number;
   tableType: string;
+  isSubmitting?: boolean;
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -22,7 +23,8 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
   party,
   tableType,
   onConfirm,
-  onCancel
+  onCancel,
+  isSubmitting = false
 }) => {
   const { toast } = useToast();
   
@@ -94,8 +96,10 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleConfirm}>Confirm Booking</Button>
+        <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+        <Button onClick={handleConfirm} disabled={isSubmitting}>
+          {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
+        </Button>
       </CardFooter>
     </Card>
   );
