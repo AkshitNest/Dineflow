@@ -8,14 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/store/authContext';
 import OccupancyChart from '@/components/OccupancyChart';
-import { getRestaurantById } from '@/store/restaurantData';
+import { getRestaurantById, getOccupancyData } from '@/services/restaurantService';
 import BookingForm from '@/components/BookingForm';
 import { AlertTriangle, BookOpen, Clock, MapPin, Phone, Star as StarIcon, Users, Utensils } from 'lucide-react';
-import { getOccupancyData } from '@/store/restaurantData';
 
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [restaurant, setRestaurant] = useState<any | null>(null);
+  const [occupancyData, setOccupancyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +29,9 @@ const RestaurantDetail = () => {
         
         const data = await getRestaurantById(id);
         setRestaurant(data);
+        
+        const occupancy = await getOccupancyData(id);
+        setOccupancyData(occupancy);
       } catch (error) {
         console.error("Error fetching restaurant:", error);
       } finally {
@@ -62,7 +65,10 @@ const RestaurantDetail = () => {
     );
   }
   
-  const occupancyPercentage = Math.round((restaurant.occupiedSeats / restaurant.totalSeats) * 100);
+  const occupiedSeats = restaurant.occupied_seats;
+  const totalSeats = restaurant.total_seats;
+  const occupancyPercentage = Math.round((occupiedSeats / totalSeats) * 100);
+  const estimatedWaitTime = restaurant.estimated_wait_time;
   
   const getOccupancyColor = () => {
     if (occupancyPercentage >= 80) return 'text-red-500';
@@ -102,8 +108,6 @@ const RestaurantDetail = () => {
       ]
     }
   ];
-
-  const chartData = id ? getOccupancyData(id) : [];
 
   return (
     <DashboardLayout>
@@ -150,7 +154,7 @@ const RestaurantDetail = () => {
                   </div>
                   <Progress value={occupancyPercentage} className={`h-2 mt-2 ${getProgressColor()}`} />
                   <div className="text-sm text-gray-500 mt-2">
-                    {restaurant.occupiedSeats} / {restaurant.totalSeats} seats
+                    {occupiedSeats} / {totalSeats} seats
                   </div>
                 </CardContent>
               </Card>
@@ -162,7 +166,7 @@ const RestaurantDetail = () => {
                     <span>Wait Time</span>
                   </div>
                   <div className="text-2xl font-bold mt-2">
-                    {restaurant.estimatedWaitTime} min
+                    {estimatedWaitTime} min
                   </div>
                   <div className="text-sm text-gray-500">
                     Estimated waiting time
@@ -177,7 +181,7 @@ const RestaurantDetail = () => {
                     <span>Contact</span>
                   </div>
                   <div className="text-lg font-medium mt-2">
-                    (555) 123-4567
+                    {restaurant.phone_number || "(555) 123-4567"}
                   </div>
                   <div className="text-sm text-gray-500">
                     Call for inquiries
@@ -209,7 +213,7 @@ const RestaurantDetail = () => {
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Occupancy Trends</h3>
                       <div className="h-72">
-                        <OccupancyChart data={chartData} />
+                        <OccupancyChart data={occupancyData} />
                       </div>
                     </div>
                     

@@ -10,7 +10,10 @@ import {
   User,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  PanelLeft,
+  Utensils,
+  Users
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -61,6 +64,24 @@ const DashboardSidebar = () => {
       icon: <Home className="h-4 w-4 mr-2" />,
       label: 'Dashboard',
       exact: true
+    },
+    {
+      to: '/owner-dashboard/restaurants',
+      icon: <Utensils className="h-4 w-4 mr-2" />,
+      label: 'My Restaurants',
+      exact: false
+    },
+    {
+      to: '/owner-dashboard/reservations',
+      icon: <CalendarCheck2 className="h-4 w-4 mr-2" />,
+      label: 'Reservations',
+      exact: false
+    },
+    {
+      to: '/owner-dashboard/analytics',
+      icon: <PanelLeft className="h-4 w-4 mr-2" />,
+      label: 'Analytics',
+      exact: false
     }
   ];
   

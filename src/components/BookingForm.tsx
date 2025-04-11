@@ -11,7 +11,7 @@ import { CalendarIcon, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import BookingSummary from './BookingSummary';
 import { useAuth } from '@/store/authContext';
-import { addReservation } from '@/store/reservationData';
+import { addReservation } from '@/services/reservationService';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,6 +29,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -49,27 +50,39 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
     setStep(1);
   };
   
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!user || !date) return;
     
-    // Create new reservation
-    const newReservation = addReservation({
-      restaurantId,
-      userId: user.id,
-      date: format(date, 'yyyy-MM-dd'),
-      time,
-      partySize: parseInt(party),
-      tableType,
-      status: 'confirmed'
-    });
-    
-    toast({
-      title: "Booking Confirmed!",
-      description: `Your reservation at ${restaurantName} has been confirmed.`
-    });
-    
-    // Navigate to reservations page
-    navigate('/dashboard/reservations');
+    try {
+      setIsSubmitting(true);
+      
+      // Create new reservation
+      const newReservation = await addReservation({
+        restaurant_id: restaurantId,
+        user_id: user.id,
+        date: format(date, 'yyyy-MM-dd'),
+        time,
+        party_size: parseInt(party),
+        table_type: tableType,
+      });
+      
+      toast({
+        title: "Booking Confirmed!",
+        description: `Your reservation at ${restaurantName} has been confirmed.`
+      });
+      
+      // Navigate to reservations page
+      navigate('/dashboard/reservations');
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      toast({
+        title: "Booking Failed",
+        description: "There was an error creating your reservation. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   if (step === 2 && date) {
@@ -82,6 +95,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         tableType={tableType}
         onCancel={handleBack}
         onConfirm={handleConfirmBooking}
+        isSubmitting={isSubmitting}
       />
     );
   }
