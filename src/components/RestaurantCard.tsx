@@ -59,7 +59,7 @@ const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant }) => {
       </CardContent>
       
       <CardFooter className="pt-0 pb-4">
-        <Link to={`/restaurants/${restaurant.id}`} className="w-full">
+        <Link to={`/dashboard/restaurants/${restaurant.id}`} className="w-full">
           <Button className="w-full" variant="outline">View Details</Button>
         </Link>
       </CardFooter>
