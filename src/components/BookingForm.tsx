@@ -14,6 +14,7 @@ import { useAuth } from '@/store/authContext';
 import { addReservation } from '@/services/reservationService';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface BookingFormProps {
   restaurantId: string;
@@ -30,6 +31,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -43,18 +45,33 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   const tableTypes = ['Standard', 'Window', 'Booth', 'Bar', 'Outdoor'];
   
   const handleNext = () => {
+    setError(null);
     setStep(2);
   };
   
   const handleBack = () => {
+    setError(null);
     setStep(1);
   };
   
   const handleConfirmBooking = async () => {
-    if (!user || !date) return;
+    if (!user || !date) {
+      setError("You must be logged in to make a reservation");
+      return;
+    }
     
     try {
       setIsSubmitting(true);
+      setError(null);
+      
+      console.log("Creating reservation with data:", {
+        restaurant_id: restaurantId,
+        user_id: user.id,
+        date: format(date, 'yyyy-MM-dd'),
+        time,
+        party_size: parseInt(party),
+        table_type: tableType,
+      });
       
       // Create new reservation
       const newReservation = await addReservation({
@@ -66,6 +83,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         table_type: tableType,
       });
       
+      console.log("Reservation created:", newReservation);
+      
       toast({
         title: "Booking Confirmed!",
         description: `Your reservation at ${restaurantName} has been confirmed.`
@@ -75,6 +94,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
       navigate('/dashboard/reservations');
     } catch (error) {
       console.error('Error creating reservation:', error);
+      setError("There was an error creating your reservation. Please try again.");
       toast({
         title: "Booking Failed",
         description: "There was an error creating your reservation. Please try again.",
@@ -107,6 +127,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         <CardDescription>Make a reservation at {restaurantName}</CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>
