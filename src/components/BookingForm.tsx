@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   const tableTypes = ['Standard', 'Window', 'Booth', 'Bar', 'Outdoor'];
   
   const handleNext = () => {
+    if (!user) {
+      setError("You must be logged in to make a reservation");
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to make a reservation",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setError(null);
     setStep(2);
   };
@@ -56,7 +65,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
   
   const handleConfirmBooking = async () => {
     if (!user || !date) {
-      setError("You must be logged in to make a reservation");
+      setError("You must be logged in and select a date to make a reservation");
       return;
     }
     
@@ -83,15 +92,24 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         table_type: tableType,
       });
       
-      console.log("Reservation created:", newReservation);
-      
-      toast({
-        title: "Booking Confirmed!",
-        description: `Your reservation at ${restaurantName} has been confirmed.`
-      });
-      
-      // Navigate to reservations page
-      navigate('/dashboard/reservations');
+      if (newReservation) {
+        console.log("Reservation created:", newReservation);
+        
+        toast({
+          title: "Booking Confirmed!",
+          description: `Your reservation at ${restaurantName} has been confirmed.`
+        });
+        
+        // Navigate to reservations page
+        navigate('/dashboard/reservations');
+      } else {
+        setError("Failed to create reservation. Please try again.");
+        toast({
+          title: "Booking Failed",
+          description: "There was a problem creating your reservation. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Error creating reservation:', error);
       setError("There was an error creating your reservation. Please try again.");
@@ -131,6 +149,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
           <Alert variant="destructive" className="mb-4">
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        {!user && (
+          <Alert variant="warning" className="mb-4">
+            <AlertTitle>Login Required</AlertTitle>
+            <AlertDescription>You must be logged in to make a reservation</AlertDescription>
           </Alert>
         )}
         
@@ -235,7 +260,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={handleNext}>
+        <Button 
+          className="w-full" 
+          onClick={handleNext}
+          disabled={!user}
+        >
           Continue
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>

@@ -10,21 +10,32 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'example-anon-
 console.log('Supabase URL:', supabaseUrl);
 console.log('Supabase Anon Key:', supabaseAnonKey);
 
-// Create a custom function to get Supabase client with error handling
-export const getSupabaseClient = () => {
-  if (!supabaseUrl || supabaseUrl === 'https://example-supabase-project.supabase.co') {
-    console.warn('⚠️ Using example Supabase URL. Set VITE_SUPABASE_URL in your environment variables for production.');
-  }
-
-  if (!supabaseAnonKey || supabaseAnonKey === 'example-anon-key') {
-    console.warn('⚠️ Using example Supabase anon key. Set VITE_SUPABASE_ANON_KEY in your environment variables for production.');
-  }
-
+// Create a single instance of the supabase client
+const createSupabaseClient = () => {
   try {
+    if (!supabaseUrl || supabaseUrl === 'https://example-supabase-project.supabase.co') {
+      console.warn('⚠️ Using example Supabase URL. Set VITE_SUPABASE_URL in your environment variables for production.');
+    }
+
+    if (!supabaseAnonKey || supabaseAnonKey === 'example-anon-key') {
+      console.warn('⚠️ Using example Supabase anon key. Set VITE_SUPABASE_ANON_KEY in your environment variables for production.');
+    }
+
     return createClient<Database>(supabaseUrl, supabaseAnonKey);
   } catch (error) {
     console.error('Failed to create Supabase client:', error);
-    // Return a mock client that won't cause the app to crash but will log errors
+    return null;
+  }
+};
+
+// Create the client instance
+const supabaseClient = createSupabaseClient();
+
+// Export a function to get the client with better error handling
+export const getSupabaseClient = () => {
+  if (!supabaseClient) {
+    console.error('Supabase client is not available');
+    // Return a mock client to prevent app crashes
     return {
       from: () => ({
         select: () => ({
@@ -56,7 +67,9 @@ export const getSupabaseClient = () => {
       }),
     } as any;
   }
+  
+  return supabaseClient;
 };
 
-// Export the Supabase client
+// For backward compatibility
 export const supabase = getSupabaseClient();

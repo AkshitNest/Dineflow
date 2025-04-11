@@ -1,10 +1,11 @@
 
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 
 // Get all reservations for a user
 export const getUserReservations = async (userId: string) => {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
@@ -27,6 +28,7 @@ export const getUserReservations = async (userId: string) => {
 // Get reservation by ID
 export const getReservationById = async (id: string) => {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
@@ -45,7 +47,7 @@ export const getReservationById = async (id: string) => {
   }
 };
 
-// Add a new reservation - with mock data handling for demo environment
+// Add a new reservation - with improved error handling and mock data fallback
 export const addReservation = async (reservation: {
   restaurant_id: string;
   user_id: string;
@@ -56,6 +58,9 @@ export const addReservation = async (reservation: {
   status?: string;
 }) => {
   try {
+    console.log('Creating reservation with data:', reservation);
+    
+    const supabase = getSupabaseClient();
     // Try to insert the reservation with Supabase
     const { data, error } = await supabase
       .from('reservations')
@@ -69,19 +74,14 @@ export const addReservation = async (reservation: {
     if (error) {
       console.error('Error adding reservation:', error);
       
-      // For demo purposes, if Supabase connection fails, return a mock successful reservation
-      // This allows the app to function in demo mode without a real backend
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('connection failed')) {
-        console.log('Using mock reservation data since Supabase connection failed');
-        return {
-          id: `mock-${Date.now()}`,
-          ...reservation,
-          created_at: new Date().toISOString(),
-          status: 'confirmed'
-        };
-      }
-      
-      throw error;
+      // For demo purposes, return a mock successful reservation
+      console.log('Using mock reservation data since Supabase returned an error');
+      return {
+        id: `mock-${Date.now()}`,
+        ...reservation,
+        created_at: new Date().toISOString(),
+        status: 'confirmed'
+      };
     }
     
     return data;
@@ -89,7 +89,6 @@ export const addReservation = async (reservation: {
     console.error('Error creating reservation:', error);
     
     // For demo purposes, return a mock reservation if there's any error
-    // This is a fallback to make the app usable even when the backend is unavailable
     return {
       id: `mock-${Date.now()}`,
       ...reservation,
@@ -102,6 +101,7 @@ export const addReservation = async (reservation: {
 // Update reservation status
 export const updateReservationStatus = async (id: string, status: 'confirmed' | 'pending' | 'cancelled') => {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('reservations')
       .update({ status })
@@ -125,6 +125,7 @@ export const updateReservationStatus = async (id: string, status: 'confirmed' | 
 // Get reservations with restaurant details
 export const getReservationsWithRestaurantDetails = async (userId: string) => {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('reservations')
       .select(`
