@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 // Define types for our authentication context
 export type UserRole = 'diner' | 'restaurant_owner';
@@ -91,6 +92,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
     
+    // If not found in mock DB, create a user with the provided email
+    // This is to simulate a successful login with the user's input
+    if (!foundUser) {
+      // Extract name from email (for display purposes)
+      const nameFromEmail = email.split('@')[0]
+        .split('.')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+      
+      const newUser = {
+        id: `user-${Date.now()}`,
+        name: nameFromEmail, // Use part before @ as name
+        email: email,
+        role: role,
+      };
+      
+      localStorage.setItem('dineflow_user', JSON.stringify(newUser));
+      setUser(newUser);
+      toast({
+        title: "Welcome!",
+        description: `Welcome, ${newUser.name}!`,
+      });
+      return true;
+    }
+    
     toast({
       title: "Login failed",
       description: "Invalid email or password",
@@ -104,12 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Create simulated Google user
+    // Instead of using hardcoded values, we'll use a generic name based on the current timestamp
+    // In a real implementation with Supabase, we would get the actual Google account details
+    const timestamp = new Date().toLocaleTimeString();
     const googleUser = {
-      id: role === 'diner' ? 'g-123456' : 'g-789012',
-      name: role === 'diner' ? 'Jane Smith' : 'Restaurant Manager',
-      email: role === 'diner' ? 'jane@example.com' : 'manager@restaurant.com',
-      avatar: role === 'diner' ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane' : 'https://api.dicebear.com/7.x/avataaars/svg?seed=manager',
+      id: `g-${Date.now()}`,
+      name: `Google User (${timestamp})`, // Use a timestamp to make it unique
+      email: `user-${Date.now()}@gmail.com`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`,
       role,
     };
     
@@ -138,10 +166,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     
-    // Create new user
+    // Create new user - use the actual name provided during signup
     const newUser = {
       id: `user-${Date.now()}`,
-      name,
+      name, // Use the actual name provided
       email,
       role,
     };
