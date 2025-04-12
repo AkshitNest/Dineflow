@@ -71,8 +71,25 @@ export const addReservation = async (reservation: {
       ...reservation,
       status: needsQueue ? 'queued' : (reservation.status || 'confirmed'),
       queue_position: needsQueue ? await getNextQueuePosition(reservation.restaurant_id, reservation.date) : null,
-      table_number: !needsQueue ? await allocateTable(reservation.restaurant_id, reservation.date, reservation.time, reservation.party_size) : null
+      table_number: !needsQueue ? await allocateTable(reservation.restaurant_id, reservation.date, reservation.time, reservation.party_size) : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
+    
+    // Show appropriate toast notification based on status
+    if (needsQueue) {
+      toast({
+        title: "You've been added to the queue",
+        description: `Your position is #${reservationData.queue_position}. We'll notify you when your table is ready.`,
+        variant: "default"
+      });
+    } else {
+      toast({
+        title: "Reservation Confirmed!",
+        description: `Your table (${reservationData.table_number}) has been reserved.`,
+        variant: "default"
+      });
+    }
     
     // Try to insert the reservation with Supabase
     const { data, error } = await supabase
@@ -98,7 +115,8 @@ export const addReservation = async (reservation: {
         status: mockNeedsQueue ? 'queued' : 'confirmed',
         queue_position: mockQueuePosition,
         table_number: mockTableNumber,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
     }
     
@@ -117,7 +135,8 @@ export const addReservation = async (reservation: {
       status: mockNeedsQueue ? 'queued' : 'confirmed',
       queue_position: mockQueuePosition,
       table_number: mockTableNumber,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
   }
 };
@@ -128,7 +147,10 @@ export const updateReservationStatus = async (id: string, status: 'confirmed' | 
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ status })
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id)
       .select()
       .single();
@@ -142,7 +164,7 @@ export const updateReservationStatus = async (id: string, status: 'confirmed' | 
   } catch (error) {
     console.error('Error in updateReservationStatus:', error);
     // Return the original data with updated status for demo
-    return { id, status };
+    return { id, status, updated_at: new Date().toISOString() };
   }
 };
 
@@ -203,7 +225,8 @@ export const notifyTableAvailable = async (reservationId: string) => {
       .update({ 
         status: 'confirmed', 
         queue_position: null,
-        table_number: tableNumber
+        table_number: tableNumber,
+        updated_at: new Date().toISOString()
       })
       .eq('id', reservationId)
       .select()
@@ -216,9 +239,16 @@ export const notifyTableAvailable = async (reservationId: string) => {
         id: reservationId,
         status: 'confirmed',
         queue_position: null,
-        table_number: `T${Math.floor(Math.random() * 20) + 1}`
+        table_number: `T${Math.floor(Math.random() * 20) + 1}`,
+        updated_at: new Date().toISOString()
       };
     }
+    
+    // Notify both user and owner (in a real app)
+    toast({
+      title: "Table Ready!",
+      description: `Table ${data.table_number} is now ready for the reservation.`,
+    });
     
     return data;
   } catch (error) {
@@ -228,7 +258,8 @@ export const notifyTableAvailable = async (reservationId: string) => {
       id: reservationId,
       status: 'confirmed',
       queue_position: null,
-      table_number: `T${Math.floor(Math.random() * 20) + 1}`
+      table_number: `T${Math.floor(Math.random() * 20) + 1}`,
+      updated_at: new Date().toISOString()
     };
   }
 };
@@ -265,11 +296,52 @@ export const getReservationsWithRestaurantDetails = async (userId: string) => {
 // In a real app, this would be a websocket or server-sent event
 export const checkForTableAvailability = (callback: (reservationId: string) => void) => {
   // For demo purposes, randomly trigger a notification after a short delay
-  setTimeout(() => {
+  const timeoutId = setTimeout(() => {
     // Generate a random reservation ID (in real app would be an actual ID)
     const mockReservationId = `mock-${Date.now()}`;
     callback(mockReservationId);
   }, 15000 + Math.random() * 30000); // Random time between 15-45 seconds
   
-  return () => {}; // Cleanup function
+  return () => clearTimeout(timeoutId); // Cleanup function
+};
+
+// Get estimated wait time based on queue position
+export const getEstimatedWaitTime = (queuePosition: number): number => {
+  // Simple estimation: 15 minutes per queue position
+  // In a real app, this would be more sophisticated based on restaurant data
+  return queuePosition * 15;
+};
+
+// Get owner reservations with filtering options
+export const getOwnerReservations = async (restaurantId: string, filter: 'upcoming' | 'past' | 'cancelled' = 'upcoming') => {
+  try {
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from('reservations')
+      .select('*')
+      .eq('restaurant_id', restaurantId);
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (filter === 'upcoming') {
+      query = query.gte('date', today).neq('status', 'cancelled');
+    } else if (filter === 'past') {
+      query = query.lt('date', today).neq('status', 'cancelled');
+    } else if (filter === 'cancelled') {
+      query = query.eq('status', 'cancelled');
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching owner reservations:', error);
+      throw error;
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getOwnerReservations:', error);
+    // Return empty array to prevent UI crashes
+    return [];
+  }
 };

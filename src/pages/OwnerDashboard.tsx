@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/store/authContext';
-import { CalendarCheck2, Clock, Users, Utensils, ArrowUp, ArrowDown, CheckCircle, AlertCircle } from 'lucide-react';
+import { CalendarCheck2, Clock, Users, Utensils, ArrowUp, ArrowDown, CheckCircle, AlertCircle, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getUserReservations } from '@/services/reservationService';
+import { getUserReservations, updateReservationStatus, notifyTableAvailable } from '@/services/reservationService';
 import {
   Table,
   TableBody,
@@ -82,7 +82,7 @@ const OwnerDashboard: React.FC = () => {
   
   // Filter and sort reservations for different views
   const upcomingReservations = reservations
-    .filter(res => res.status !== 'cancelled')
+    .filter(res => res.status !== 'cancelled' && new Date(res.date + 'T' + res.time) >= new Date())
     .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime())
     .slice(0, 10); // Show only the first 10
 
@@ -90,6 +90,16 @@ const OwnerDashboard: React.FC = () => {
     .filter(res => res.status === 'cancelled')
     .sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime())
     .slice(0, 10); // Show only the first 10
+
+  // Get tables that need allocation (pending reservations)
+  const pendingTableAllocations = reservations
+    .filter(res => res.status === 'pending' && !res.table_number)
+    .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime());
+
+  // Get queued reservations
+  const queuedReservations = reservations
+    .filter(res => res.status === 'queued')
+    .sort((a, b) => (a.queue_position || 999) - (b.queue_position || 999));
   
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
@@ -117,6 +127,40 @@ const OwnerDashboard: React.FC = () => {
       year: 'numeric' 
     };
     return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  // Handle assigning a table to a queued or pending reservation
+  const handleAssignTable = async (reservationId: string) => {
+    try {
+      const updatedReservation = await notifyTableAvailable(reservationId);
+      
+      if (updatedReservation) {
+        // Update the local state
+        setReservations(prevReservations => 
+          prevReservations.map(res => 
+            res.id === reservationId ? { 
+              ...res, 
+              status: 'confirmed',
+              queue_position: null,
+              table_number: updatedReservation.table_number
+            } : res
+          )
+        );
+        
+        toast({
+          title: "Table Assigned",
+          description: `Table ${updatedReservation.table_number} has been assigned to the reservation.`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error('Error assigning table:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign table. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -201,7 +245,7 @@ const OwnerDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Upcoming Reservations</CardTitle>
-                <CardDescription>Manage reservations for today</CardDescription>
+                <CardDescription>Manage reservations for today and future dates</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -210,38 +254,56 @@ const OwnerDashboard: React.FC = () => {
                   </div>
                 ) : upcomingReservations.length > 0 ? (
                   <div className="rounded-md border">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="py-3 px-4 text-left">Customer</th>
-                          <th className="py-3 px-4 text-left">Date</th>
-                          <th className="py-3 px-4 text-left">Time</th>
-                          <th className="py-3 px-4 text-left">Party Size</th>
-                          <th className="py-3 px-4 text-left">Status</th>
-                          <th className="py-3 px-4 text-left">Table</th>
-                          <th className="py-3 px-4 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Reservation ID</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Party Size</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Table</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {upcomingReservations.map((reservation) => (
-                          <tr key={reservation.id} className="border-b">
-                            <td className="py-3 px-4">{user?.name || 'Customer Name'}</td>
-                            <td className="py-3 px-4">{formatDate(reservation.date)}</td>
-                            <td className="py-3 px-4">{reservation.time}</td>
-                            <td className="py-3 px-4">{reservation.party_size} guests</td>
-                            <td className="py-3 px-4">
+                          <TableRow key={reservation.id}>
+                            <TableCell className="font-medium">{reservation.id.substring(0, 8)}...</TableCell>
+                            <TableCell>{user?.name || 'Customer Name'}</TableCell>
+                            <TableCell>{formatDate(reservation.date)}</TableCell>
+                            <TableCell>{reservation.time}</TableCell>
+                            <TableCell>{reservation.party_size} guests</TableCell>
+                            <TableCell>
                               <Badge className={getStatusBadgeStyle(reservation.status)}>
                                 {reservation.status}
                               </Badge>
-                            </td>
-                            <td className="py-3 px-4">{reservation.table_number || 'Not assigned'}</td>
-                            <td className="py-3 px-4 text-right">
-                              <Button variant="ghost" size="sm">View</Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                            <TableCell>{reservation.table_number || 'Not assigned'}</TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  // If reservation is queued or pending and no table assigned
+                                  if ((reservation.status === 'queued' || 
+                                      reservation.status === 'pending') && 
+                                      !reservation.table_number) {
+                                    handleAssignTable(reservation.id);
+                                  }
+                                }}
+                              >
+                                {(reservation.status === 'queued' || 
+                                 (reservation.status === 'pending' && !reservation.table_number)) 
+                                  ? 'Assign Table' 
+                                  : 'View'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -279,11 +341,15 @@ const OwnerDashboard: React.FC = () => {
                                 </div>
                                 <div className="text-sm space-y-1">
                                   <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Reservation ID:</span> 
+                                    <span>{reservation.id.substring(0, 8)}...</span>
+                                  </div>
+                                  <div className="flex justify-between">
                                     <span className="text-muted-foreground">Customer:</span> 
                                     <span>{user?.name || 'Customer Name'}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Time:</span> 
+                                    <span className="text-muted-foreground">Booking Time:</span> 
                                     <span>{reservation.time}</span>
                                   </div>
                                   <div className="flex justify-between">
@@ -318,6 +384,7 @@ const OwnerDashboard: React.FC = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead>Reservation ID</TableHead>
                             <TableHead>Customer</TableHead>
                             <TableHead>Party Size</TableHead>
                             <TableHead>Queue Position</TableHead>
@@ -326,27 +393,83 @@ const OwnerDashboard: React.FC = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {upcomingReservations
-                            .filter(res => res.status === 'queued')
-                            .map(reservation => (
-                              <TableRow key={reservation.id}>
-                                <TableCell className="font-medium">{user?.name || 'Customer Name'}</TableCell>
-                                <TableCell>{reservation.party_size} guests</TableCell>
-                                <TableCell>#{reservation.queue_position || '?'}</TableCell>
-                                <TableCell>{reservation.time}</TableCell>
-                                <TableCell>
-                                  <Button size="sm" variant="outline" className="mr-2">
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Assign Table
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                          {queuedReservations.map(reservation => (
+                            <TableRow key={reservation.id}>
+                              <TableCell className="font-medium">{reservation.id.substring(0, 8)}...</TableCell>
+                              <TableCell>{user?.name || 'Customer Name'}</TableCell>
+                              <TableCell>{reservation.party_size} guests</TableCell>
+                              <TableCell>#{reservation.queue_position || '?'}</TableCell>
+                              <TableCell>{reservation.time}</TableCell>
+                              <TableCell>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="mr-2"
+                                  onClick={() => handleAssignTable(reservation.id)}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Assign Table
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                             
-                          {upcomingReservations.filter(res => res.status === 'queued').length === 0 && (
+                          {queuedReservations.length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                              <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                                 No customers currently in queue
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Pending Table Allocations</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Reservation ID</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Party Size</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingTableAllocations.map(reservation => (
+                            <TableRow key={reservation.id}>
+                              <TableCell className="font-medium">{reservation.id.substring(0, 8)}...</TableCell>
+                              <TableCell>{user?.name || 'Customer Name'}</TableCell>
+                              <TableCell>{formatDate(reservation.date)}</TableCell>
+                              <TableCell>{reservation.time}</TableCell>
+                              <TableCell>{reservation.party_size} guests</TableCell>
+                              <TableCell>
+                                <Badge className={getStatusBadgeStyle(reservation.status)}>
+                                  {reservation.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="mr-2"
+                                  onClick={() => handleAssignTable(reservation.id)}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Assign Table
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                            
+                          {pendingTableAllocations.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                                No pending table allocations
                               </TableCell>
                             </TableRow>
                           )}
@@ -374,21 +497,25 @@ const OwnerDashboard: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Reservation ID</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Time</TableHead>
                         <TableHead>Party Size</TableHead>
                         <TableHead>Table Type</TableHead>
+                        <TableHead>Cancelled On</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {cancelledReservations.map(reservation => (
                         <TableRow key={reservation.id}>
-                          <TableCell className="font-medium">{user?.name || 'Customer Name'}</TableCell>
+                          <TableCell className="font-medium">{reservation.id.substring(0, 8)}...</TableCell>
+                          <TableCell>{user?.name || 'Customer Name'}</TableCell>
                           <TableCell>{formatDate(reservation.date)}</TableCell>
                           <TableCell>{reservation.time}</TableCell>
                           <TableCell>{reservation.party_size} guests</TableCell>
                           <TableCell>{reservation.table_type}</TableCell>
+                          <TableCell>{formatDate(reservation.updated_at || reservation.created_at)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

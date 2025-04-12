@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/store/authContext';
 import { getReservationsWithRestaurantDetails, updateReservationStatus } from '@/services/reservationService';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, MapPin, Users, X, Table } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, X, Table, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import TableNotification from '@/components/TableNotification';
@@ -34,6 +35,28 @@ const ReservationsPage: React.FC = () => {
         setLoading(true);
         const data = await getReservationsWithRestaurantDetails(user.id);
         setReservations(data);
+        
+        // Show notification for confirmed bookings
+        const recentConfirmed = data.find(res => 
+          res.status === 'confirmed' && 
+          !res.notificationShown &&
+          new Date(res.date + 'T' + res.time) > new Date()
+        );
+        
+        if (recentConfirmed) {
+          toast({
+            title: "Booking Confirmed!",
+            description: recentConfirmed.table_number 
+              ? `Your table (${recentConfirmed.table_number}) has been confirmed.` 
+              : "Your reservation has been confirmed.",
+            variant: "default"
+          });
+          
+          // Mark as notification shown (in a real app, would store this state in the database)
+          setReservations(prev => prev.map(res => 
+            res.id === recentConfirmed.id ? {...res, notificationShown: true} : res
+          ));
+        }
       } catch (error) {
         console.error('Error fetching reservations:', error);
         toast({
@@ -47,6 +70,11 @@ const ReservationsPage: React.FC = () => {
     };
     
     fetchReservations();
+    
+    // Set up interval to refresh reservations every minute for real-time updates
+    const intervalId = setInterval(fetchReservations, 60000);
+    
+    return () => clearInterval(intervalId);
   }, [user, toast]);
   
   const filteredReservations = reservations.filter(reservation => {
@@ -117,6 +145,36 @@ const ReservationsPage: React.FC = () => {
     }
   };
   
+  const renderStatusInfo = (reservation: any) => {
+    if (reservation.status === 'confirmed' && reservation.table_number) {
+      return (
+        <div className="bg-green-50 p-3 rounded-md flex items-center">
+          <Table className="h-4 w-4 mr-2 text-green-600" />
+          <span className="font-medium">Table {reservation.table_number} confirmed!</span>
+        </div>
+      );
+    } else if (reservation.status === 'pending') {
+      return (
+        <div className="bg-yellow-50 p-3 rounded-md flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2 text-yellow-600" />
+          <span>Your reservation is awaiting confirmation</span>
+        </div>
+      );
+    } else if (reservation.status === 'queued') {
+      return (
+        <div className="bg-blue-50 p-3 rounded-md">
+          <TableNotification 
+            reservationId={reservation.id} 
+            queuePosition={reservation.queue_position} 
+            tableNumber={reservation.table_number}
+            status={reservation.status}
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+  
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -143,19 +201,19 @@ const ReservationsPage: React.FC = () => {
                       <Card key={reservation.id} className="overflow-hidden">
                         <div className="h-40 overflow-hidden">
                           <img 
-                            src={reservation.restaurant?.image} 
-                            alt={reservation.restaurant?.name} 
+                            src={reservation.restaurant?.image || '/placeholder.svg'} 
+                            alt={reservation.restaurant?.name || 'Restaurant'} 
                             className="w-full h-full object-cover"
                           />
                         </div>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <CardTitle>{reservation.restaurant?.name}</CardTitle>
+                              <CardTitle>{reservation.restaurant?.name || 'Restaurant Name'}</CardTitle>
                               <CardDescription>
                                 <div className="flex items-center mt-1">
                                   <MapPin className="h-4 w-4 mr-1" />
-                                  <span>{reservation.restaurant?.location}</span>
+                                  <span>{reservation.restaurant?.location || 'Location'}</span>
                                 </div>
                               </CardDescription>
                             </div>
@@ -183,16 +241,8 @@ const ReservationsPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          <div className={`p-3 rounded-md mb-4 ${
-                            reservation.status === 'confirmed' ? 'bg-green-50' : 
-                            reservation.status === 'queued' ? 'bg-blue-50' : 'bg-gray-50'
-                          }`}>
-                            <TableNotification 
-                              reservationId={reservation.id} 
-                              queuePosition={reservation.queue_position} 
-                              tableNumber={reservation.table_number}
-                              status={reservation.status}
-                            />
+                          <div className="mb-4">
+                            {renderStatusInfo(reservation)}
                           </div>
                           
                           <Button 
@@ -241,7 +291,7 @@ const ReservationsPage: React.FC = () => {
                       <TableBody>
                         {sortedReservations.map(reservation => (
                           <TableRow key={reservation.id}>
-                            <TableCell className="font-medium">{reservation.restaurant?.name}</TableCell>
+                            <TableCell className="font-medium">{reservation.restaurant?.name || 'Restaurant'}</TableCell>
                             <TableCell>{formatDisplayDate(reservation.date)}</TableCell>
                             <TableCell>{reservation.time}</TableCell>
                             <TableCell>{reservation.party_size} people</TableCell>
@@ -278,6 +328,7 @@ const ReservationsPage: React.FC = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Time</TableHead>
                           <TableHead>Party Size</TableHead>
+                          <TableHead>Cancelled On</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -285,10 +336,11 @@ const ReservationsPage: React.FC = () => {
                           .filter(r => r.status === 'cancelled')
                           .map(reservation => (
                             <TableRow key={reservation.id}>
-                              <TableCell className="font-medium">{reservation.restaurant?.name}</TableCell>
+                              <TableCell className="font-medium">{reservation.restaurant?.name || 'Restaurant'}</TableCell>
                               <TableCell>{formatDisplayDate(reservation.date)}</TableCell>
                               <TableCell>{reservation.time}</TableCell>
                               <TableCell>{reservation.party_size} people</TableCell>
+                              <TableCell>{formatDisplayDate(reservation.updated_at || reservation.created_at)}</TableCell>
                             </TableRow>
                           ))}
                       </TableBody>

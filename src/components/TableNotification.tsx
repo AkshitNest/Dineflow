@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Bell, CheckCircle, Table } from 'lucide-react';
+import { Bell, CheckCircle, Table, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { checkForTableAvailability, notifyTableAvailable } from '@/services/reservationService';
 import { useAuth } from '@/store/authContext';
@@ -19,6 +19,7 @@ const TableNotification: React.FC<TableNotificationProps> = ({
   status 
 }) => {
   const [isNotifying, setIsNotifying] = useState(false);
+  const [estimatedWaitTime, setEstimatedWaitTime] = useState<number | null>(null);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -27,6 +28,11 @@ const TableNotification: React.FC<TableNotificationProps> = ({
     
     // Start listening for table availability
     setIsNotifying(true);
+    
+    // Calculate estimated wait time based on queue position (rough estimate)
+    // In a real app, this would be more sophisticated based on restaurant data
+    const estimatedMinutes = queuePosition * 15; // Rough estimate: 15 mins per position
+    setEstimatedWaitTime(estimatedMinutes);
     
     // In a real app, this would set up a websocket connection
     const cleanup = checkForTableAvailability(async (availableReservationId) => {
@@ -78,13 +84,26 @@ const TableNotification: React.FC<TableNotificationProps> = ({
   // Render queue information
   if (status === 'queued' && queuePosition) {
     return (
-      <div className="flex items-center">
-        <div className={`mr-2 ${isNotifying ? 'animate-ping' : ''}`}>
-          <Bell className="h-4 w-4 text-amber-500" />
+      <div className="space-y-2">
+        <div className="flex items-center">
+          <div className={`mr-2 ${isNotifying ? 'animate-pulse' : ''}`}>
+            <Bell className="h-4 w-4 text-amber-500" />
+          </div>
+          <span className="text-sm font-medium">
+            Waiting in queue: Position #{queuePosition}
+          </span>
         </div>
-        <span className="text-sm">
-          Waiting in queue: Position #{queuePosition}
-        </span>
+        
+        {estimatedWaitTime && (
+          <div className="flex items-center text-sm text-gray-600">
+            <Clock className="h-4 w-4 mr-1 text-gray-500" />
+            <span>Estimated wait: ~{estimatedWaitTime} minutes</span>
+          </div>
+        )}
+        
+        <div className="text-xs text-gray-500">
+          You'll receive a notification when your table is ready
+        </div>
       </div>
     );
   }
