@@ -1,4 +1,3 @@
-
 import { getSupabaseClient } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 
@@ -197,12 +196,31 @@ export const getOccupancyData = async (restaurantId: string) => {
       // Calculate seats based on percentage
       const occupiedSeats = Math.floor((totalSeats * occupancyPercentage) / 100);
       
+      // Add day of week factor - weekends are typically busier
+      const dayOfWeek = new Date().getDay();
+      let dayFactor = 1.0;
+      
+      // Weekend adjustment
+      if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
+        dayFactor = 1.2;
+      } else if (dayOfWeek === 5) { // Friday
+        dayFactor = 1.15;
+      } else if (dayOfWeek === 1) { // Monday
+        dayFactor = 0.85;
+      }
+      
+      // Apply day factor
+      const adjustedOccupiedSeats = Math.min(
+        Math.round(occupiedSeats * dayFactor),
+        totalSeats
+      );
+      
       data.push({
         hour: `${displayHour}:00`,
-        occupiedSeats,
-        availableSeats: totalSeats - occupiedSeats,
+        occupiedSeats: adjustedOccupiedSeats,
+        availableSeats: totalSeats - adjustedOccupiedSeats,
         totalSeats,
-        occupancy: occupancyPercentage,
+        occupancy: Math.round((adjustedOccupiedSeats / totalSeats) * 100),
       });
     }
     
@@ -210,6 +228,83 @@ export const getOccupancyData = async (restaurantId: string) => {
   } catch (err) {
     console.error('Error generating occupancy data:', err);
     return []; // Return empty array to prevent app from crashing
+  }
+};
+
+// Get customer demographics for analytics
+export const getCustomerDemographics = async (restaurantId: string) => {
+  // This would normally fetch from a database, but we'll generate mock data for now
+  return {
+    ageGroups: [
+      { name: '18-24', value: 15 },
+      { name: '25-34', value: 30 },
+      { name: '35-44', value: 25 },
+      { name: '45-54', value: 15 },
+      { name: '55+', value: 15 },
+    ],
+    visitFrequency: [
+      { name: 'First Time', value: 20 },
+      { name: 'Occasional', value: 35 },
+      { name: 'Regular', value: 30 },
+      { name: 'Frequent', value: 15 },
+    ],
+    reservationSource: [
+      { name: 'Direct', value: 40 },
+      { name: 'App', value: 30 },
+      { name: 'Phone', value: 15 },
+      { name: 'Partners', value: 15 },
+    ]
+  };
+};
+
+// Predict footfall for a given date
+export const predictFootfall = async (restaurantId: string, date: Date = new Date()) => {
+  try {
+    // This would use ML models in a real app, but we'll simulate a prediction
+    const dayOfWeek = date.getDay(); // 0-6, 0 is Sunday
+    const month = date.getMonth(); // 0-11
+    const isHoliday = false; // This would check against a holiday database
+    
+    // Base footfall values by day of week
+    const baseFootfall = {
+      0: 110, // Sunday
+      1: 75,  // Monday
+      2: 80,  // Tuesday
+      3: 85,  // Wednesday
+      4: 95,  // Thursday
+      5: 130, // Friday
+      6: 140  // Saturday
+    };
+    
+    // Seasonal adjustments (simplified)
+    const seasonalFactor = [0.9, 0.9, 1.0, 1.05, 1.1, 1.15, 1.2, 1.2, 1.1, 1.0, 0.95, 1.1][month];
+    
+    // Holiday adjustment
+    const holidayFactor = isHoliday ? 1.3 : 1.0;
+    
+    // Weather factor (simulated - would use weather API in real app)
+    const weatherFactor = 1.0;
+    
+    // Calculate prediction
+    const prediction = Math.round(
+      baseFootfall[dayOfWeek as keyof typeof baseFootfall] * 
+      seasonalFactor * 
+      holidayFactor * 
+      weatherFactor
+    );
+    
+    return {
+      prediction,
+      factors: {
+        dayOfWeek,
+        seasonalFactor,
+        holidayFactor,
+        weatherFactor
+      }
+    };
+  } catch (err) {
+    console.error('Error predicting footfall:', err);
+    return { prediction: 100, factors: {} }; // Default fallback
   }
 };
 

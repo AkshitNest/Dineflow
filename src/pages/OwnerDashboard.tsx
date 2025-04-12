@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getUserReservations, updateReservationStatus, notifyTableAvailable } from '@/services/reservationService';
+import RestaurantAnalytics from '@/components/RestaurantAnalytics';
 import {
   Table,
   TableBody,
@@ -28,6 +29,7 @@ const OwnerDashboard: React.FC = () => {
   
   // Mock data for restaurant owner dashboard
   const restaurantData = {
+    id: '1', // Added an ID for the restaurant
     name: "Bella Italia",
     todayReservations: 42,
     totalSeats: 120,
@@ -533,12 +535,10 @@ const OwnerDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Analytics</CardTitle>
-                <CardDescription>View detailed performance metrics</CardDescription>
+                <CardDescription>View detailed performance metrics and predictions</CardDescription>
               </CardHeader>
-              <CardContent className="text-center py-10">
-                <p className="text-muted-foreground">
-                  Analytics tools coming soon...
-                </p>
+              <CardContent>
+                <RestaurantAnalytics restaurantId={restaurantData.id} />
               </CardContent>
             </Card>
           </TabsContent>
