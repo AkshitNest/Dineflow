@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, CheckCircle, Table } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { checkForTableAvailability, notifyTableAvailable } from '@/services/reservationService';
 import { useAuth } from '@/store/authContext';
@@ -8,15 +8,22 @@ import { useAuth } from '@/store/authContext';
 interface TableNotificationProps {
   reservationId?: string;
   queuePosition?: number | null;
+  tableNumber?: string | null;
+  status?: string;
 }
 
-const TableNotification: React.FC<TableNotificationProps> = ({ reservationId, queuePosition }) => {
+const TableNotification: React.FC<TableNotificationProps> = ({ 
+  reservationId, 
+  queuePosition, 
+  tableNumber, 
+  status 
+}) => {
   const [isNotifying, setIsNotifying] = useState(false);
   const { user } = useAuth();
   
   useEffect(() => {
     // Only listen for notifications if we have a user and a queued reservation
-    if (!user || !queuePosition) return;
+    if (!user || !queuePosition || status !== 'queued') return;
     
     // Start listening for table availability
     setIsNotifying(true);
@@ -45,20 +52,44 @@ const TableNotification: React.FC<TableNotificationProps> = ({ reservationId, qu
     });
     
     return cleanup;
-  }, [user, reservationId, queuePosition]);
+  }, [user, reservationId, queuePosition, status]);
   
-  if (!queuePosition) return null;
+  // Render nothing if we have no position or table
+  if (!queuePosition && !tableNumber) return null;
   
-  return (
-    <div className="flex items-center">
-      <div className={`mr-2 ${isNotifying ? 'animate-ping' : ''}`}>
-        <Bell className="h-4 w-4 text-amber-500" />
+  // Render confirmed table information
+  if (status === 'confirmed' && tableNumber) {
+    return (
+      <div className="flex items-center text-green-700">
+        <div className="mr-2">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+        </div>
+        <div>
+          <span className="font-medium">Confirmed!</span>
+          <div className="flex items-center mt-1">
+            <Table className="h-4 w-4 mr-1 text-green-600" />
+            <span className="text-sm">Table {tableNumber} assigned</span>
+          </div>
+        </div>
       </div>
-      <span className="text-sm">
-        Waiting in queue: Position #{queuePosition}
-      </span>
-    </div>
-  );
+    );
+  }
+  
+  // Render queue information
+  if (status === 'queued' && queuePosition) {
+    return (
+      <div className="flex items-center">
+        <div className={`mr-2 ${isNotifying ? 'animate-ping' : ''}`}>
+          <Bell className="h-4 w-4 text-amber-500" />
+        </div>
+        <span className="text-sm">
+          Waiting in queue: Position #{queuePosition}
+        </span>
+      </div>
+    );
+  }
+  
+  return null;
 };
 
 export default TableNotification;

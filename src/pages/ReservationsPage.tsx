@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +49,6 @@ const ReservationsPage: React.FC = () => {
     fetchReservations();
   }, [user, toast]);
   
-  // Filter reservations based on active tab
   const filteredReservations = reservations.filter(reservation => {
     const reservationDate = new Date(`${reservation.date}T${reservation.time}`);
     const today = new Date();
@@ -65,7 +63,6 @@ const ReservationsPage: React.FC = () => {
     return true;
   });
   
-  // Sort upcoming reservations by date (nearest first)
   const sortedReservations = [...filteredReservations].sort((a, b) => {
     const dateA = new Date(`${a.date}T${a.time}`);
     const dateB = new Date(`${b.date}T${b.time}`);
@@ -78,7 +75,6 @@ const ReservationsPage: React.FC = () => {
     try {
       await updateReservationStatus(id, 'cancelled');
       
-      // Update local state
       setReservations(prevReservations => 
         prevReservations.map(res => 
           res.id === id ? { ...res, status: 'cancelled' } : res
@@ -99,7 +95,6 @@ const ReservationsPage: React.FC = () => {
     }
   };
   
-  // Format date for display
   const formatDisplayDate = (dateString: string) => {
     const date = parseISO(dateString);
     return format(date, 'EEEE, MMMM d, yyyy');
@@ -188,25 +183,17 @@ const ReservationsPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Display table number if confirmed */}
-                          {reservation.status === 'confirmed' && reservation.table_number && (
-                            <div className="bg-green-50 p-3 rounded-md mb-4 flex items-center">
-                              <Table className="h-5 w-5 mr-2 text-green-600" />
-                              <span className="text-green-800 font-medium">
-                                Table assigned: {reservation.table_number}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Queue notification component */}
-                          {reservation.status === 'queued' && (
-                            <div className="bg-blue-50 p-3 rounded-md mb-4">
-                              <TableNotification 
-                                reservationId={reservation.id} 
-                                queuePosition={reservation.queue_position} 
-                              />
-                            </div>
-                          )}
+                          <div className={`p-3 rounded-md mb-4 ${
+                            reservation.status === 'confirmed' ? 'bg-green-50' : 
+                            reservation.status === 'queued' ? 'bg-blue-50' : 'bg-gray-50'
+                          }`}>
+                            <TableNotification 
+                              reservationId={reservation.id} 
+                              queuePosition={reservation.queue_position} 
+                              tableNumber={reservation.table_number}
+                              status={reservation.status}
+                            />
+                          </div>
                           
                           <Button 
                             variant="outline" 
