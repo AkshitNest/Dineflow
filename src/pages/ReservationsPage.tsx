@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/store/authContext';
 import { getReservationsWithRestaurantDetails, updateReservationStatus } from '@/services/reservationService';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, MapPin, Users, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, X, Table } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import TableNotification from '@/components/TableNotification';
 import {
-  Table,
+  Table as UITable,
   TableBody,
   TableCell,
   TableHead,
@@ -111,6 +113,10 @@ const ReservationsPage: React.FC = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
+      case 'queued':
+        return 'bg-blue-100 text-blue-800';
+      case 'seated':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -163,8 +169,8 @@ const ReservationsPage: React.FC = () => {
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="pb-2">
-                          <div className="grid grid-cols-2 gap-4">
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                               <span>{formatDisplayDate(reservation.date)}</span>
@@ -175,14 +181,33 @@ const ReservationsPage: React.FC = () => {
                             </div>
                             <div className="flex items-center">
                               <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                              <span>{reservation.partySize} {reservation.partySize === 1 ? 'person' : 'people'}</span>
+                              <span>{reservation.party_size} {reservation.party_size === 1 ? 'person' : 'people'}</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-sm font-medium">{reservation.tableType} table</span>
+                              <span className="text-sm font-medium">{reservation.table_type} table</span>
                             </div>
                           </div>
-                        </CardContent>
-                        <div className="px-6 pb-6">
+                          
+                          {/* Display table number if confirmed */}
+                          {reservation.status === 'confirmed' && reservation.table_number && (
+                            <div className="bg-green-50 p-3 rounded-md mb-4 flex items-center">
+                              <Table className="h-5 w-5 mr-2 text-green-600" />
+                              <span className="text-green-800 font-medium">
+                                Table assigned: {reservation.table_number}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Queue notification component */}
+                          {reservation.status === 'queued' && (
+                            <div className="bg-blue-50 p-3 rounded-md mb-4">
+                              <TableNotification 
+                                reservationId={reservation.id} 
+                                queuePosition={reservation.queue_position} 
+                              />
+                            </div>
+                          )}
+                          
                           <Button 
                             variant="outline" 
                             className="w-full text-red-500 border-red-200 hover:bg-red-50"
@@ -191,7 +216,7 @@ const ReservationsPage: React.FC = () => {
                             <X className="mr-2 h-4 w-4" />
                             Cancel Reservation
                           </Button>
-                        </div>
+                        </CardContent>
                       </Card>
                     )
                   ))}
@@ -215,7 +240,7 @@ const ReservationsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {sortedReservations.length > 0 ? (
-                    <Table>
+                    <UITable>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Restaurant</TableHead>
@@ -223,6 +248,7 @@ const ReservationsPage: React.FC = () => {
                           <TableHead>Time</TableHead>
                           <TableHead>Party Size</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Table</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -231,16 +257,17 @@ const ReservationsPage: React.FC = () => {
                             <TableCell className="font-medium">{reservation.restaurant?.name}</TableCell>
                             <TableCell>{formatDisplayDate(reservation.date)}</TableCell>
                             <TableCell>{reservation.time}</TableCell>
-                            <TableCell>{reservation.partySize} people</TableCell>
+                            <TableCell>{reservation.party_size} people</TableCell>
                             <TableCell>
                               <Badge className={getStatusBadgeStyle(reservation.status)}>
                                 {reservation.status}
                               </Badge>
                             </TableCell>
+                            <TableCell>{reservation.table_number || '-'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
-                    </Table>
+                    </UITable>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">You don't have any past reservations.</p>
@@ -257,7 +284,7 @@ const ReservationsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {reservations.filter(r => r.status === 'cancelled').length > 0 ? (
-                    <Table>
+                    <UITable>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Restaurant</TableHead>
@@ -274,11 +301,11 @@ const ReservationsPage: React.FC = () => {
                               <TableCell className="font-medium">{reservation.restaurant?.name}</TableCell>
                               <TableCell>{formatDisplayDate(reservation.date)}</TableCell>
                               <TableCell>{reservation.time}</TableCell>
-                              <TableCell>{reservation.partySize} people</TableCell>
+                              <TableCell>{reservation.party_size} people</TableCell>
                             </TableRow>
                           ))}
                       </TableBody>
-                    </Table>
+                    </UITable>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">You don't have any cancelled reservations.</p>

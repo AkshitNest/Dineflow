@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,10 +96,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
       if (newReservation) {
         console.log("Reservation created:", newReservation);
         
-        toast({
-          title: "Booking Confirmed!",
-          description: `Your reservation at ${restaurantName} has been confirmed.`
-        });
+        // Show appropriate message based on whether reservation is queued or confirmed
+        if (newReservation.status === 'queued') {
+          toast({
+            title: "Joined Waiting Queue",
+            description: `You're #${newReservation.queue_position} in line. We'll notify you when your table is ready.`
+          });
+        } else {
+          toast({
+            title: "Booking Confirmed!",
+            description: newReservation.table_number
+              ? `Your reservation at ${restaurantName} has been confirmed. Table ${newReservation.table_number} has been allocated.`
+              : `Your reservation at ${restaurantName} has been confirmed.`
+          });
+        }
         
         // Navigate to reservations page
         navigate('/dashboard/reservations');
@@ -153,7 +164,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ restaurantId, restaurantName 
         )}
         
         {!user && (
-          <Alert variant="warning" className="mb-4">
+          <Alert className="mb-4">
             <AlertTitle>Login Required</AlertTitle>
             <AlertDescription>You must be logged in to make a reservation</AlertDescription>
           </Alert>
